@@ -112,7 +112,7 @@ pub const Mapping = struct {
             }
         }
         if (comptime std.meta.trait.isSlice(extras.FieldType(Value, f))) {
-            return @as(FieldType(Value, f), &.{});
+            return @as(extras.FieldType(Value, f), &.{});
         }
         return null;
     }
