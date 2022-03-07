@@ -303,7 +303,11 @@ fn parse_sequence(p: *Parser) Error!Sequence {
 fn get_event_string(event: Token, lines: []const string) string {
     const sm = event.start_mark;
     const em = event.end_mark;
-    return lines[sm.line][sm.column..em.column];
+    if (sm.line != em.line) return ""; // TODO multi-line content
+    const s = lines[sm.line][sm.column..em.column];
+    if (s.len < 2) return s;
+    if (s[0] == '"' and s[s.len - 1] == '"') return std.mem.trim(u8, s, "\"");
+    return s;
 }
 
 //
