@@ -24,3 +24,5 @@ dependencies:
       - src/reader.c
       - src/scanner.c
       - src/writer.c
+
+  - src: git https://github.com/nektro/zig-extras

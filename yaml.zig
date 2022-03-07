@@ -1,10 +1,10 @@
 const std = @import("std");
 const string = []const u8;
+const extras = @import("extras");
 
 const c = @cImport({
     @cInclude("yaml.h");
 });
-const u = @import("./index.zig");
 
 //
 //
@@ -101,6 +101,18 @@ pub const Mapping = struct {
             if (std.mem.eql(u8, item.key, k)) {
                 return item.value;
             }
+        }
+        return null;
+    }
+
+    pub fn getT(self: Mapping, k: string, comptime f: std.meta.FieldEnum(Value)) ?extras.FieldType(Value, f) {
+        for (self.items) |item| {
+            if (std.mem.eql(u8, item.key, k)) {
+                return @field(item.value, @tagName(f));
+            }
+        }
+        if (comptime std.meta.trait.isSlice(FieldType(Value, f))) {
+            return @as(FieldType(Value, f), &.{});
         }
         return null;
     }
@@ -292,4 +304,18 @@ fn get_event_string(event: Token, lines: []const string) string {
     const sm = event.start_mark;
     const em = event.end_mark;
     return lines[sm.line][sm.column..em.column];
+}
+
+//
+//
+
+fn split(alloc: std.mem.Allocator, in: string, delim: string) ![]string {
+    var list = std.ArrayList(string).init(alloc);
+    defer list.deinit();
+
+    var iter = std.mem.split(u8, in, delim);
+    while (iter.next()) |str| {
+        try list.append(str);
+    }
+    return list.toOwnedSlice();
 }
