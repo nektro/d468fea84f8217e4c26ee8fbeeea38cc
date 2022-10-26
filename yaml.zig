@@ -223,7 +223,7 @@ fn parse_item(p: *Parser, start: ?Token) Error!Item {
         c.YAML_DOCUMENT_START_EVENT => Item{ .document = try parse_document(p) },
         c.YAML_MAPPING_START_EVENT => Item{ .mapping = try parse_mapping(p) },
         c.YAML_SEQUENCE_START_EVENT => Item{ .sequence = try parse_sequence(p) },
-        c.YAML_SCALAR_EVENT => Item{ .string = get_event_string(tok.?, p.lines) },
+        c.YAML_SCALAR_EVENT => Item{ .string = try get_event_string(tok.?, p) },
         else => unreachable,
     };
 }
@@ -271,7 +271,7 @@ fn parse_mapping(p: *Parser) Error!Mapping {
             return error.YamlUnexpectedToken;
         }
         try res.append(Key{
-            .key = get_event_string(tok.?, p.lines),
+            .key = try get_event_string(tok.?, p),
             .value = try parse_value(p),
         });
     }
@@ -300,10 +300,27 @@ fn parse_sequence(p: *Parser) Error!Sequence {
     }
 }
 
-fn get_event_string(event: Token, lines: []const string) string {
+fn get_event_string(event: Token, p: *const Parser) !string {
     const sm = event.start_mark;
     const em = event.end_mark;
-    if (sm.line != em.line) return ""; // TODO multi-line content
+    const lines = p.lines;
+    if (sm.line != em.line) {
+        const starter = lines[sm.line][sm.column..];
+        std.debug.assert(starter.len == 1);
+        switch (starter[0]) {
+            '|' => {
+                var list = std.ArrayList(u8).init(p.alloc);
+                errdefer list.deinit();
+                var i = sm.line + 1;
+                while (i <= em.line) : (i += 1) {
+                    try list.appendSlice(std.mem.trimLeft(u8, lines[i], " "));
+                    try list.append('\n');
+                }
+                return list.toOwnedSlice();
+            },
+            else => @panic("TODO"),
+        }
+    }
     const s = lines[sm.line][sm.column..em.column];
     if (s.len < 2) return s;
     if (s[0] == '"' and s[s.len - 1] == '"') return std.mem.trim(u8, s, "\"");
