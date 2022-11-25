@@ -117,13 +117,17 @@ pub const Mapping = struct {
         return null;
     }
 
+    pub fn getMap(self: Mapping, k: string) ?Mapping {
+        return self.getT(k, .mapping);
+    }
+
     pub fn get_string(self: Mapping, k: string) string {
         return if (self.get(k)) |v| v.string else "";
     }
 
     pub fn get_string_array(self: Mapping, alloc: std.mem.Allocator, k: string) ![]string {
         var list = std.ArrayList(string).init(alloc);
-        defer list.deinit();
+        errdefer list.deinit();
         if (self.get(k)) |val| {
             if (val == .sequence) {
                 for (val.sequence) |item| {
@@ -312,7 +316,7 @@ fn get_event_string(event: Token, p: *const Parser) !string {
                 var list = std.ArrayList(u8).init(p.alloc);
                 errdefer list.deinit();
                 var i = sm.line + 1;
-                while (i <= em.line) : (i += 1) {
+                while (i < em.line) : (i += 1) {
                     try list.appendSlice(std.mem.trimLeft(u8, lines[i], " "));
                     try list.append('\n');
                 }
