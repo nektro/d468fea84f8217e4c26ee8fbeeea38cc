@@ -117,17 +117,13 @@ pub const Mapping = struct {
         return null;
     }
 
-    pub fn getMap(self: Mapping, k: string) ?Mapping {
-        return self.getT(k, .mapping);
-    }
-
     pub fn get_string(self: Mapping, k: string) string {
         return if (self.get(k)) |v| v.string else "";
     }
 
     pub fn get_string_array(self: Mapping, alloc: std.mem.Allocator, k: string) ![]string {
         var list = std.ArrayList(string).init(alloc);
-        errdefer list.deinit();
+        defer list.deinit();
         if (self.get(k)) |val| {
             if (val == .sequence) {
                 for (val.sequence) |item| {
@@ -234,12 +230,12 @@ fn parse_item(p: *Parser, start: ?Token) Error!Item {
 
 fn parse_stream(p: *Parser) Error!Stream {
     var res = std.ArrayList(Document).init(p.alloc);
-    defer res.deinit();
+    errdefer res.deinit();
 
     while (true) {
         const tok = p.next();
         if (tok.?.type == c.YAML_STREAM_END_EVENT) {
-            return Stream{ .docs = res.toOwnedSlice() };
+            return Stream{ .docs = try res.toOwnedSlice() };
         }
         if (tok.?.type != c.YAML_DOCUMENT_START_EVENT) {
             return error.YamlUnexpectedToken;
@@ -264,12 +260,12 @@ fn parse_document(p: *Parser) Error!Document {
 
 fn parse_mapping(p: *Parser) Error!Mapping {
     var res = std.ArrayList(Key).init(p.alloc);
-    defer res.deinit();
+    errdefer res.deinit();
 
     while (true) {
         const tok = p.next();
         if (tok.?.type == c.YAML_MAPPING_END_EVENT) {
-            return Mapping{ .items = res.toOwnedSlice() };
+            return Mapping{ .items = try res.toOwnedSlice() };
         }
         if (tok.?.type != c.YAML_SCALAR_EVENT) {
             return error.YamlUnexpectedToken;
@@ -293,12 +289,12 @@ fn parse_value(p: *Parser) Error!Value {
 
 fn parse_sequence(p: *Parser) Error!Sequence {
     var res = std.ArrayList(Item).init(p.alloc);
-    defer res.deinit();
+    errdefer res.deinit();
 
     while (true) {
         const tok = p.next();
         if (tok.?.type == c.YAML_SEQUENCE_END_EVENT) {
-            return res.toOwnedSlice();
+            return try res.toOwnedSlice();
         }
         try res.append(try parse_item(p, tok));
     }
@@ -316,11 +312,11 @@ fn get_event_string(event: Token, p: *const Parser) !string {
                 var list = std.ArrayList(u8).init(p.alloc);
                 errdefer list.deinit();
                 var i = sm.line + 1;
-                while (i < em.line) : (i += 1) {
+                while (i <= em.line) : (i += 1) {
                     try list.appendSlice(std.mem.trimLeft(u8, lines[i], " "));
                     try list.append('\n');
                 }
-                return list.toOwnedSlice();
+                return try list.toOwnedSlice();
             },
             else => @panic("TODO"),
         }
@@ -336,11 +332,11 @@ fn get_event_string(event: Token, p: *const Parser) !string {
 
 fn split(alloc: std.mem.Allocator, in: string, delim: string) ![]string {
     var list = std.ArrayList(string).init(alloc);
-    defer list.deinit();
+    errdefer list.deinit();
 
     var iter = std.mem.split(u8, in, delim);
     while (iter.next()) |str| {
         try list.append(str);
     }
-    return list.toOwnedSlice();
+    return try list.toOwnedSlice();
 }
