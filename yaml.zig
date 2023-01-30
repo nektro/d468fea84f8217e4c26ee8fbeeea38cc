@@ -111,9 +111,6 @@ pub const Mapping = struct {
                 return @field(item.value, @tagName(f));
             }
         }
-        if (comptime std.meta.trait.isSlice(extras.FieldType(Value, f))) {
-            return @as(extras.FieldType(Value, f), &.{});
-        }
         return null;
     }
 
